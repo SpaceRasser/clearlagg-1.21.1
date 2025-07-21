@@ -1,0 +1,10 @@
+modLoader="javafml"
+loaderVersion="[1.21.1,)"
+license="All Rights Reserved"
+
+[[mods]]
+modId="clearlagmod"
+version="1.0"
+displayName="ClearLag Mod"
+authors="Rasser31"
+description="Удаляет дропнутые предметы каждые 5 минут."
