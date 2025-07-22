@@ -1,0 +1,7 @@
+{
+  "clearlagmod.warning.minutes": "§e[ClearLag] Warning! Clearing in %d minutes!",
+  "clearlagmod.warning.seconds": "§e[ClearLag] Warning! Clearing in %d seconds!",
+  "clearlagmod.cleared":      "§a[ClearLag] Cleared %d items in %s",
+  "clearlagmod.config.clearIntervalSeconds": "Clear interval (seconds)",
+  "clearlagmod.config.warningSeconds":      "Warning times before clear (seconds)"
+}

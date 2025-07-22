@@ -1,0 +1,7 @@
+{
+  "clearlagmod.warning.minutes": "§e[ClearLag] Внимание! Очистка через %d мин!",
+  "clearlagmod.warning.seconds": "§e[ClearLag] Внимание! Очистка через %d сек!",
+  "clearlagmod.cleared":      "§a[ClearLag] Удалено %d предметов в %s",
+  "clearlagmod.config.clearIntervalSeconds": "Интервал между чистками (сек)",
+  "clearlagmod.config.warningSeconds":      "Время предупреждений до чистки (сек)"
+}

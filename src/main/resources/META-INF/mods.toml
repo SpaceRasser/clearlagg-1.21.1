@@ -1,10 +1,13 @@
-modLoader="javafml"
+modLoader="neoforge"
 loaderVersion="[1.21.1,)"
-license="All Rights Reserved"
-
+license="MIT"
+issueTrackerURL="https://github.com/SpaceRasser/clearlagg-1.21.1/issues"
 [[mods]]
 modId="clearlagmod"
-version="1.0"
-displayName="ClearLag Mod"
+version="${file.jarVersion}"
+displayName="ClearLagMod"
 authors="Rasser31"
-description="Удаляет дропнутые предметы каждые 5 минут."
+description="Removes dropped items every 5 minutes."
+dependencies = [
+    { modId="neoforge", mandatory=true, versionRange="[21.1,22)", ordering="NONE", side="BOTH" }
+]

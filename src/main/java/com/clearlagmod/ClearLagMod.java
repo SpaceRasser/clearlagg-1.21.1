@@ -1,67 +1,80 @@
 package com.clearlagmod;
 
+import com.clearlagmod.config.ClearLagConfig;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.entity.item.ItemEntity;
 import net.minecraft.world.phys.AABB;
+import net.neoforged.bus.api.IEventBus;
+import net.neoforged.bus.api.SubscribeEvent;
+import net.neoforged.fml.ModContainer;
+import net.neoforged.fml.config.ModConfig;
+import net.neoforged.fml.event.config.ModConfigEvent;
+import net.neoforged.fml.common.Mod;
 import net.neoforged.neoforge.common.NeoForge;
 import net.neoforged.neoforge.event.tick.ServerTickEvent;
-import net.neoforged.bus.api.SubscribeEvent;
-import net.neoforged.fml.common.Mod;
+
+import java.util.Arrays;
+import java.util.List;
 
 @Mod("clearlagmod")
 public class ClearLagMod {
-    private static final int CLEAR_INTERVAL_SECONDS = 1800; // 30 минут
     private static final int TICKS_PER_SECOND = 20;
-    // В секундах: за сколько до начала очистки шлём уведомления
-    private static final int[] WARNING_SECONDS = {300, 60, 10}; // 5 минут, 1 минута, 10 секунд
 
-    private int tickCounter = 0;
-    // Флаги, чтобы не слать одно и то же уведомление несколько раз за цикл
-    private final boolean[] warningsSent = new boolean[WARNING_SECONDS.length];
+    private int tickCounter;
+    private boolean[] warningsSent;
 
-    public ClearLagMod() {
+    public ClearLagMod(ModContainer container, IEventBus modBus) {
+
+        container.registerConfig(ModConfig.Type.COMMON, ClearLagConfig.SPEC);
+
+        modBus.register(new ConfigListener(this));
+
         NeoForge.EVENT_BUS.register(this);
+    }
+
+    private void initializeConfig() {
+        this.tickCounter = 0;
+        List<? extends Integer> warns = ClearLagConfig.CONFIG.warningSeconds.get();
+        this.warningsSent = new boolean[warns.size()];
     }
 
     @SubscribeEvent
     public void onServerTick(ServerTickEvent.Post event) {
         tickCounter++;
 
-        int totalTicks = CLEAR_INTERVAL_SECONDS * TICKS_PER_SECOND;
-        int ticksLeft = totalTicks - tickCounter;
-        int secondsLeft = ticksLeft / TICKS_PER_SECOND;
+        int interval = ClearLagConfig.CONFIG.clearIntervalSeconds.get();
+        int totalTicks = interval * TICKS_PER_SECOND;
+        int secondsLeft = (totalTicks - tickCounter) / TICKS_PER_SECOND;
 
-        // Проверяем каждое заданное время предупреждения
-        for (int i = 0; i < WARNING_SECONDS.length; i++) {
-            if (!warningsSent[i] && secondsLeft == WARNING_SECONDS[i]) {
-                broadcastWarning(event.getServer().getAllLevels().iterator().next(), WARNING_SECONDS[i]);
+        List<? extends Integer> warns = ClearLagConfig.CONFIG.warningSeconds.get();
+        for (int i = 0; i < warns.size(); i++) {
+            int warnSec = warns.get(i);
+            if (!warningsSent[i] && secondsLeft == warnSec) {
+                broadcastWarning(event.getServer().getAllLevels().iterator().next(), warnSec);
                 warningsSent[i] = true;
             }
         }
 
-        // Если пора чистить — делаем работу и сбрасываем счётчики
         if (tickCounter >= totalTicks) {
             tickCounter = 0;
             clearAllLevels(event);
-            // Сбрасываем флаги предупреждений для нового цикла
-            for (int i = 0; i < warningsSent.length; i++) {
-                warningsSent[i] = false;
-            }
+            Arrays.fill(warningsSent, false);
         }
     }
 
-    private void broadcastWarning(ServerLevel anyLevel, int seconds) {
-        String humanTime;
+    private void broadcastWarning(ServerLevel level, int seconds) {
         if (seconds >= 60) {
-            humanTime = (seconds / 60) + " мин.";
+            level.getServer().getPlayerList().broadcastSystemMessage(
+                    Component.translatable("clearlagmod.warning.minutes", seconds / 60),
+                    false
+            );
         } else {
-            humanTime = seconds + " сек.";
+            level.getServer().getPlayerList().broadcastSystemMessage(
+                    Component.translatable("clearlagmod.warning.seconds", seconds),
+                    false
+            );
         }
-        anyLevel.getServer().getPlayerList().broadcastSystemMessage(
-                Component.literal("§e[ClearLag] Внимание! Очистка через " + humanTime + "!"),
-                false
-        );
     }
 
     private void clearAllLevels(ServerTickEvent.Post event) {
@@ -72,7 +85,7 @@ public class ClearLagMod {
 
     private void clearDroppedItems(ServerLevel level) {
         int removedItems = 0;
-        AABB worldBounds = new AABB(-30000000, -64, -30000000, 30000000, 320, 30000000);
+        AABB worldBounds = new AABB(-3e7, -64, -3e7, 3e7, 320, 3e7);
 
         for (ItemEntity item : level.getEntitiesOfClass(ItemEntity.class, worldBounds)) {
             item.discard();
@@ -80,11 +93,33 @@ public class ClearLagMod {
         }
 
         if (removedItems > 0) {
+            String dimName = level.dimension().location().toString();
             level.getServer().getPlayerList().broadcastSystemMessage(
-                    Component.literal("§a[ClearLag] Удалено предметов в "
-                            + level.dimension().location() + ": " + removedItems),
+                    Component.translatable("clearlagmod.cleared", removedItems, dimName),
                     false
             );
+        }
+    }
+
+    public static class ConfigListener {
+        private final ClearLagMod mod;
+
+        public ConfigListener(ClearLagMod mod) {
+            this.mod = mod;
+        }
+
+        @SubscribeEvent
+        public void onConfigLoading(ModConfigEvent.Loading event) {
+            if (event.getConfig().getSpec() == ClearLagConfig.SPEC) {
+                mod.initializeConfig();
+            }
+        }
+
+        @SubscribeEvent
+        public void onConfigReloading(ModConfigEvent.Reloading event) {
+            if (event.getConfig().getSpec() == ClearLagConfig.SPEC) {
+                mod.initializeConfig();
+            }
         }
     }
 }
